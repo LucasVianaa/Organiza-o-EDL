@@ -1,28 +1,12 @@
-#include<iostream>
-#include<fstream>
-#include<string>
-#include<stdio.h>
-#include<stdlib.h>
+#include <iostream>
+#include <fstream>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 using namespace std;
 
-
-void insertionSort(int *vetor, int tamanho){
-    int  troca;
-    for (unsigned int i = 1; i < tamanho; i += 1){
-        for (int j = i-1; j >= 0;){
-            if(vetor[j] > vetor[j+1]){ 
-                troca = vetor[j+1];
-                vetor[j+1] = vetor[j];
-                vetor[j] = troca;
-                j--;
-            }else{
-                break;            
-            }
-            
-        }
-    }
-}
 
 void merge(int *vetor, int inicio, int meio,int fim){
     int aux[fim-inicio];
@@ -54,27 +38,156 @@ void mergeSort(int *vetor, int inicio, int fim){
 }
 
 
+
 int main (int argc, char const* argv[]){
 
-	//ofstream outFile("dados3.txt");
-  	fstream readFile("dados3.txt");
-	int count = 0;
-	int vetor[100];
-	//strtol(p, &end, 10)
-	string readout;
-	string search;
-	string replace;
-	while(getline(readFile,readout)){
-		if(count < 10){
-			vetor[count] = atoi(readout.c_str());
-			count += 1;
-		}
-		readFile << readout;
-		//outFile << readout;
-	}
-	for (unsigned int i = 0; i < 10; i += 1)
-	{
-		printf("%d\n", vetor[i]);
-	}
-	return 0;
+  string line; 
+  string auxArquivoInicial = "dadosTeste.txt";
+  const char* arquivoInicial = auxArquivoInicial.c_str();
+	ifstream inFile(arquivoInicial);
+  ofstream outFile("temp.txt");
+
+  int vetorOpera[1000];
+  int quantAtualVetor = 0;
+  int numLinhas = 0;
+
+  // Primeira leva
+  while(getline(inFile, line)){
+    if(quantAtualVetor < 1000){
+      vetorOpera[quantAtualVetor] = stoi(line);
+      quantAtualVetor++;
+    }else{
+      quantAtualVetor = 0;
+      mergeSort(vetorOpera, 0, 1000);
+      for (int i = 0; i < 1000; ++i){
+        outFile << to_string(vetorOpera[i]) << endl;
+      }
+    }
+    numLinhas++;
+  }
+
+  mergeSort(vetorOpera, 0, quantAtualVetor);
+  for (int i = 0; i < quantAtualVetor; ++i){
+    outFile << to_string(vetorOpera[i]) << endl;
+  }
+  quantAtualVetor = 0;
+  // fim da primeira leva
+
+  //fechando file de condição inicial
+  inFile.close();
+  outFile.close();
+  remove(arquivoInicial);
+  rename("temp.txt", arquivoInicial);
+
+
+  //Calculando o número de vezes que o vetor vai passar
+  float calc = (float)(numLinhas / 1000.0);
+  int numRuns;
+  for (numRuns = 0; calc > 1; numRuns++){
+    calc /= 2;
+  }
+
+  // Setando variaveis para segunda parte
+  int particaoAtual = 1000;
+  int estado = 0;
+  int countLinhas = 0;
+  int restante = 0;
+  int aux;
+  int count = 0;
+  streampos posicaoRetorno;
+  streampos posicaoRetornoMedio;
+  streampos posicaoRetornoTemp;
+
+  while(numRuns > 0){
+    //Abrindo file de condição temporária
+    ifstream inFile(arquivoInicial);
+    ofstream outFile("temp.txt");
+    while(getline(inFile, line)){
+      if(estado == 0){
+        posicaoRetorno = inFile.tellg();
+        estado = 1;
+      }
+
+
+      if(quantAtualVetor < 1000){
+        if(particaoAtual == 1000 && quantAtualVetor == 999){
+          posicaoRetornoMedio = inFile.tellg();
+        }
+        vetorOpera[quantAtualVetor] = stoi(line);
+        quantAtualVetor++;
+
+      }else{
+        countLinhas++;
+        if(countLinhas == particaoAtual - 1000 && particaoAtual != 1000){
+
+        }
+        int tempLine = stoi(line);
+        if(estado == 1 && countLinhas > particaoAtual - 1000){
+          if(vetorOpera[(quantAtualVetor/2)-1] < tempLine){
+            inFile.seekg(posicaoRetornoMedio);
+            estado = 2;
+            aux = restante;
+            countLinhas = 0;
+          }else{
+            restante += 1;
+            if(inFile.peek() == EOF){
+              inFile.seekg(posicaoRetornoMedio);
+              estado = 2;
+              aux = restante;  
+              countLinhas = 0;          
+            }
+          }
+        }else if(estado == 2){
+          if(restante == 0){
+            mergeSort(vetorOpera, 0, 1000);
+            for (int i = 0; i < 1000; ++i){
+              outFile << to_string(vetorOpera[i]) << endl;
+            }
+            estado = 3;
+            inFile.seekg(posicaoRetorno);
+          }else{
+            vetorOpera[1000-restante] = tempLine;
+            restante--;
+          }
+          
+        }else{
+          if((count >= (1000 - aux) && count < 1000) || 
+             (count >= (1000 + aux) )){
+            if(count < 1000){
+              vetorOpera[count - (1000 - aux)] = tempLine;
+            }else{
+              vetorOpera[count - 1000] = tempLine;
+            }
+
+          }
+          count++;
+          
+          if(inFile.peek() == EOF || count == 2000-1){
+            mergeSort(vetorOpera, 0, (count - 999));
+            for (int i = 0; i < (count - 999); ++i){
+              outFile << to_string(vetorOpera[i]) << endl;
+            }
+            estado = 0;
+            quantAtualVetor = 0;
+            count = 0;
+            aux = 0;
+          }
+
+        }
+
+      }
+    }
+
+
+
+    //fechando file de condição temporária
+    inFile.close();
+    outFile.close();
+    remove(arquivoInicial);
+    rename("temp.txt", arquivoInicial);
+    numRuns--;
+  }
+
+  
+  return 0;
 }
