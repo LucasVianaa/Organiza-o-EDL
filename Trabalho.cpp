@@ -41,6 +41,8 @@ void mergeSort(int *vetor, int inicio, int fim){
 
 int main (int argc, char const* argv[]){
 
+  remove("temp.txt");
+
   string line; 
   string auxArquivoInicial = "dadosTeste.txt";
   const char* arquivoInicial = auxArquivoInicial.c_str();
@@ -62,6 +64,8 @@ int main (int argc, char const* argv[]){
       for (int i = 0; i < 1000; ++i){
         outFile << to_string(vetorOpera[i]) << endl;
       }
+      vetorOpera[quantAtualVetor] = stoi(line);
+      quantAtualVetor++;
     }
     numLinhas++;
   }
@@ -93,18 +97,20 @@ int main (int argc, char const* argv[]){
   int countLinhas = 0;
   int restante = 0;
   int aux;
+  int quantDeAgrupamentosRestantes;
   int count = 0;
+  int primeiraParticao = 1;
   streampos posicaoRetorno;
   streampos posicaoRetornoMedio;
   streampos posicaoRetornoTemp;
-
+  numRuns = 1;
   while(numRuns > 0){
+    quantDeAgrupamentosRestantes = particaoAtual / 1000;
     //Abrindo file de condição temporária
     ifstream inFile(arquivoInicial);
     ofstream outFile("temp.txt");
     while(getline(inFile, line)){
       if(estado == 0){
-        posicaoRetorno = inFile.tellg();
         estado = 1;
       }
 
@@ -117,18 +123,15 @@ int main (int argc, char const* argv[]){
         quantAtualVetor++;
 
       }else{
+
         countLinhas++;
         if(countLinhas == particaoAtual - 1000 && particaoAtual != 1000){
-
+          posicaoRetornoMedio = inFile.tellg();
         }
+
         int tempLine = stoi(line);
         if(estado == 1 && countLinhas > particaoAtual - 1000){
-          if(vetorOpera[(quantAtualVetor/2)-1] < tempLine){
-            inFile.seekg(posicaoRetornoMedio);
-            estado = 2;
-            aux = restante;
-            countLinhas = 0;
-          }else{
+          if(vetorOpera[quantAtualVetor-1-restante] > tempLine){
             restante += 1;
             if(inFile.peek() == EOF){
               inFile.seekg(posicaoRetornoMedio);
@@ -136,6 +139,11 @@ int main (int argc, char const* argv[]){
               aux = restante;  
               countLinhas = 0;          
             }
+          }else{
+            inFile.seekg(posicaoRetornoMedio);
+            estado = 2;
+            aux = restante;  
+            countLinhas = 0;
           }
         }else if(estado == 2){
           if(restante == 0){
@@ -144,7 +152,11 @@ int main (int argc, char const* argv[]){
               outFile << to_string(vetorOpera[i]) << endl;
             }
             estado = 3;
-            inFile.seekg(posicaoRetorno);
+            if(primeiraParticao){
+              inFile.seekg(0, ios::beg);
+            }else{
+              inFile.seekg(posicaoRetorno);
+            }
           }else{
             vetorOpera[1000-restante] = tempLine;
             restante--;
@@ -171,6 +183,17 @@ int main (int argc, char const* argv[]){
             quantAtualVetor = 0;
             count = 0;
             aux = 0;
+            countLinhas = 0;
+            quantDeAgrupamentosRestantes--;
+            if(quantDeAgrupamentosRestantes > 0){
+              inFile.seekg(posicaoRetornoMedio);
+              posicaoRetorno = inFile.tellg();
+            }else{
+              quantDeAgrupamentosRestantes = particaoAtual / 1000;
+            }
+            if(primeiraParticao){
+              primeiraParticao = 0;
+            }
           }
 
         }
@@ -185,6 +208,7 @@ int main (int argc, char const* argv[]){
     outFile.close();
     remove(arquivoInicial);
     rename("temp.txt", arquivoInicial);
+    particaoAtual *= 2;
     numRuns--;
   }
 
